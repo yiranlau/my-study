@@ -1,0 +1,63 @@
+name: Android Lint
+
+on:
+  push:
+    branches: [main, dev*]
+  pull_request:
+
+env:
+  JAVA_VERSION: '17'
+
+jobs:
+  lint:
+    name: Run lint checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Record start time
+        run: echo "$(date +%s)" > /tmp/job_start.txt
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v2
+
+      - name: Run lint
+        run: ./gradlew lintDebug --no-daemon
+
+      - name: Upload lint results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lint-results
+          path: app/build/reports/lint-results/
+
+      - name: Notify Feishu
+        if: always()
+        run: |
+          STATUS="${{ job.status }}"
+          TIME=$(TZ='Asia/Shanghai' date '+%Y-%m-%d %H:%M:%S')
+          START_TS=$(cat /tmp/job_start.txt)
+          END_TS=$(date +%s)
+          DURATION=$((END_TS - START_TS))
+          HOURS=$((DURATION / 3600))
+          MINS=$(((DURATION % 3600) / 60))
+          SECS=$((DURATION % 60))
+          DURATION_STR=$(printf "%02d:%02d:%02d" $HOURS $MINS $SECS)
+          if [ "$STATUS" = "success" ]; then
+            MSG="✅ Android Lint 检查成功"
+          else
+            MSG="❌ Android Lint 检查失败"
+          fi
+          curl -X POST "${{ secrets.FEISHU_WEBHOOK_URL }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"msg_type\":\"text\",\"content\":{\"text\":\"$MSG\n\n⏰ 通知时间: $TIME\n⏱️ 耗时: $DURATION_STR\n📦 仓库: yiranlau/my-study\n🌿 分支: ${{ github.ref_name }}\n👤 触发人: ${{ github.actor }}\n🔗 查看详情: https://github.com/yiranlau/my-study/actions/runs/${{ github.run_id }}\"}}"
+

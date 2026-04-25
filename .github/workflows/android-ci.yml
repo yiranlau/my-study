@@ -1,0 +1,155 @@
+name: Android CI
+
+on:
+  push:
+    branches: [main, dev*]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  JAVA_VERSION: '17'
+  ANDROID_COMPILE_SDK: 34
+  ANDROID_BUILD_TOOLS: 34.0.0
+
+jobs:
+  ci:
+    name: Build and Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Record start time
+        run: echo "$(date +%s)" > /tmp/job_start.txt
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v2
+
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle.kts') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Run unit tests
+        run: ./gradlew testDebugUnitTest --no-daemon
+
+      - name: Run lint
+        run: ./gradlew lintDebug --no-daemon
+
+      - name: Build debug APK
+        run: ./gradlew assembleDebug --no-daemon
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: build-artifacts
+          path: |
+            app/build/outputs/apk/debug/
+            app/build/reports/
+
+      - name: Upload test reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-reports
+          path: app/build/reports/tests/
+
+      - name: Upload lint reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lint-reports
+          path: app/build/reports/lint-results/
+
+      - name: Notify Feishu
+        if: always()
+        run: |
+          STATUS="${{ job.status }}"
+          TIME=$(TZ='Asia/Shanghai' date '+%Y-%m-%d %H:%M:%S')
+          START_TS=$(cat /tmp/job_start.txt)
+          END_TS=$(date +%s)
+          DURATION=$((END_TS - START_TS))
+          HOURS=$((DURATION / 3600))
+          MINS=$(((DURATION % 3600) / 60))
+          SECS=$((DURATION % 60))
+          DURATION_STR=$(printf "%02d:%02d:%02d" $HOURS $MINS $SECS)
+
+          if [ "$STATUS" = "success" ]; then
+            EMOJI="✅"
+            COLOR="green"
+            TITLE="Android CI 构建成功"
+          else
+            EMOJI="❌"
+            COLOR="red"
+            TITLE="Android CI 构建失败"
+          fi
+
+          CARD_JSON=$(cat <<EOF
+          {
+            "msg_type": "interactive",
+            "card": {
+              "header": {
+                "title": {
+                  "tag": "plain_text",
+                  "content": "$EMOJI $TITLE $EMOJI",
+                  "font_style": "bold"
+                },
+                "template": "$COLOR"
+              },
+              "elements": [
+                {
+                  "tag": "hr"
+                },
+                {
+                  "tag": "div",
+                  "text": {
+                    "tag": "lark_md",
+                    "content": "**⏰ 通知时间**: $TIME\n**⏱️ 构建耗时**: $DURATION_STR"
+                  }
+                },
+                {
+                  "tag": "div",
+                  "text": {
+                    "tag": "lark_md",
+                    "content": "**📦 仓库**: yiranlau/my-study\n**🌿 分支**: \`${{ github.ref_name }}\`\n**👤 触发人**: ${{ github.actor }}"
+                  }
+                },
+                {
+                  "tag": "action",
+                  "actions": [
+                    {
+                      "tag": "button",
+                      "text": {
+                        "tag": "plain_text",
+                        "content": "🔗 查看构建详情"
+                      },
+                      "type": "primary",
+                      "url": "https://github.com/yiranlau/my-study/actions/runs/${{ github.run_id }}"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+EOF
+          )
+
+          curl -X POST "${{ secrets.FEISHU_WEBHOOK_URL }}" \
+            -H "Content-Type: application/json" \
+            -d "$CARD_JSON"
+

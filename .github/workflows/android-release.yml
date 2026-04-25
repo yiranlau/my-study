@@ -1,0 +1,76 @@
+name: Android Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  JAVA_VERSION: '17'
+
+jobs:
+  release:
+    name: Build and Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Record start time
+        run: echo "$(date +%s)" > /tmp/job_start.txt
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v2
+
+      - name: Get version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Build release APK
+        run: ./gradlew assembleRelease --no-daemon -PVERSION_NAME=${{ steps.version.outputs.VERSION }}
+
+      - name: Upload Release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-apk
+          path: app/build/outputs/apk/release/
+
+      - name: Create Release
+        uses: ncipollo/release-action@v1
+        with:
+          artifacts: "app/build/outputs/apk/release/*.apk"
+          generateReleaseNotes: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Notify Feishu
+        if: always()
+        run: |
+          STATUS="${{ job.status }}"
+          TIME=$(TZ='Asia/Shanghai' date '+%Y-%m-%d %H:%M:%S')
+          START_TS=$(cat /tmp/job_start.txt)
+          END_TS=$(date +%s)
+          DURATION=$((END_TS - START_TS))
+          HOURS=$((DURATION / 3600))
+          MINS=$(((DURATION % 3600) / 60))
+          SECS=$((DURATION % 60))
+          DURATION_STR=$(printf "%02d:%02d:%02d" $HOURS $MINS $SECS)
+          VERSION="${{ github.ref_name }}"
+          if [ "$STATUS" = "success" ]; then
+            MSG="✅ Android Release $VERSION 发布成功"
+          else
+            MSG="❌ Android Release $VERSION 发布失败"
+          fi
+          curl -X POST "${{ secrets.FEISHU_WEBHOOK_URL }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"msg_type\":\"text\",\"content\":{\"text\":\"$MSG\n\n⏰ 通知时间: $TIME\n⏱️ 耗时: $DURATION_STR\n📦 仓库: yiranlau/my-study\n🏷️ 版本: $VERSION\n👤 触发人: ${{ github.actor }}\n🔗 查看详情: https://github.com/yiranlau/my-study/actions/runs/${{ github.run_id }}\"}}"
+
