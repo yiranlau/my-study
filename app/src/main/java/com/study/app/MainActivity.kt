@@ -8,7 +8,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
-import com.study.app.ui.navigation.StudyNavigation
+import androidx.navigation.compose.rememberNavController
+import com.study.app.ui.navigation.AppNavigation
 import com.study.app.ui.theme.StudyAppTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -19,11 +20,12 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             StudyAppTheme {
+                val navController = rememberNavController()
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    StudyNavigation()
+                    AppNavigation(navController = navController)
                 }
             }
         }

@@ -16,10 +16,74 @@ jobs:
   ci:
     name: Build and Test
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    permissions:
+      pages: write
+      id-token: write
 
     steps:
       - name: Record start time
         run: echo "$(date +%s)" > /tmp/job_start.txt
+
+      - name: Notify Feishu workflow started
+        run: |
+          TIME=$(TZ='Asia/Shanghai' date '+%Y-%m-%d %H:%M:%S')
+
+          CARD_JSON=$(cat <<EOF
+          {
+            "msg_type": "interactive",
+            "card": {
+              "header": {
+                "title": {
+                  "tag": "plain_text",
+                  "content": "🚀 Android CI 开始构建",
+                  "font_style": "bold"
+                },
+                "template": "blue"
+              },
+              "elements": [
+                {
+                  "tag": "hr"
+                },
+                {
+                  "tag": "div",
+                  "text": {
+                    "tag": "lark_md",
+                    "content": "**⏰ 通知时间**: $TIME"
+                  }
+                },
+                {
+                  "tag": "div",
+                  "text": {
+                    "tag": "lark_md",
+                    "content": "**📦 仓库**: yiranlaux/my-study\n**🔢 构建ID**: ${{ github.run_id }}\n**🌿 分支**: \`${{ github.ref_name }}\`\n**👤 触发人**: ${{ github.actor }}"
+                  }
+                },
+                {
+                  "tag": "action",
+                  "actions": [
+                    {
+                      "tag": "button",
+                      "text": {
+                        "tag": "plain_text",
+                        "content": "🔗 查看构建详情"
+                      },
+                      "type": "primary",
+                      "url": "https://github.com/yiranlaux/my-study/actions/runs/${{ github.run_id }}"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+          EOF
+          )
+
+          curl -X POST "${{ secrets.FEISHU_WEBHOOK_URL }}" \
+            -H "Content-Type: application/json" \
+            -d "$CARD_JSON"
 
       - name: Checkout
         uses: actions/checkout@v4
@@ -44,13 +108,14 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gradle-
 
-      - name: Run unit tests
-        run: ./gradlew testDebugUnitTest --no-daemon
+      - name: Run unit tests with coverage
+        run: ./gradlew testDebugUnitTest jacocoTestReport --no-daemon
 
       - name: Run lint
         run: ./gradlew lintDebug --no-daemon
 
       - name: Build debug APK
+        id: build
         run: ./gradlew assembleDebug --no-daemon
 
       - name: Upload build artifacts
@@ -75,6 +140,24 @@ jobs:
         with:
           name: lint-reports
           path: app/build/reports/lint-results/
+
+      - name: Upload code coverage reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: code-coverage-reports
+          path: |
+            app/build/reports/jacoco/
+            app/build/reports/jacocoTestReport/
+
+      - name: Deploy reports to GitHub Pages
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: app/build/reports
+
+      - name: Deploy to GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v4
 
       - name: Notify Feishu
         if: always()
@@ -126,7 +209,14 @@ jobs:
                   "tag": "div",
                   "text": {
                     "tag": "lark_md",
-                    "content": "**📦 仓库**: yiranlau/my-study\n**🌿 分支**: \`${{ github.ref_name }}\`\n**👤 触发人**: ${{ github.actor }}"
+                    "content": "**📦 仓库**: yiranlaux/my-study\n**🔢 构建ID**: ${{ github.run_id }}\n**🌿 分支**: \`${{ github.ref_name }}\`\n**👤 触发人**: ${{ github.actor }}"
+                  }
+                },
+                {
+                  "tag": "div",
+                  "text": {
+                    "tag": "lark_md",
+                    "content": "**📊 测试报告**: [覆盖率报告](https://yiranlaux.github.io/my-study/jacoco/jacocoTestReport/html/) | [单元测试](https://yiranlaux.github.io/my-study/tests/testDebugUnitTest/) | [Lint](https://yiranlaux.github.io/my-study/lint-results-debug.html)"
                   }
                 },
                 {
@@ -139,14 +229,14 @@ jobs:
                         "content": "🔗 查看构建详情"
                       },
                       "type": "primary",
-                      "url": "https://github.com/yiranlau/my-study/actions/runs/${{ github.run_id }}"
+                      "url": "https://github.com/yiranlaux/my-study/actions/runs/${{ github.run_id }}"
                     }
                   ]
                 }
               ]
             }
           }
-EOF
+          EOF
           )
 
           curl -X POST "${{ secrets.FEISHU_WEBHOOK_URL }}" \

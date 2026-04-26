@@ -1,23 +1,91 @@
-name: Android Release
+name: Android Release CI
 
 on:
   push:
+    branches: [main]
     tags:
       - 'v*'
+  workflow_dispatch:
 
 env:
   JAVA_VERSION: '17'
+  ANDROID_COMPILE_SDK: 34
+  ANDROID_BUILD_TOOLS: 34.0.0
 
 jobs:
   release:
     name: Build and Release
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
     permissions:
       contents: write
+      pages: write
+      id-token: write
 
     steps:
       - name: Record start time
         run: echo "$(date +%s)" > /tmp/job_start.txt
+
+      - name: Notify Feishu workflow started
+        run: |
+          TIME=$(TZ='Asia/Shanghai' date '+%Y-%m-%d %H:%M:%S')
+          VERSION="${{ github.ref_name }}"
+
+          CARD_JSON=$(cat <<EOF
+          {
+            "msg_type": "interactive",
+            "card": {
+              "header": {
+                "title": {
+                  "tag": "plain_text",
+                  "content": "🚀 Android Release $VERSION 开始构建",
+                  "font_style": "bold"
+                },
+                "template": "blue"
+              },
+              "elements": [
+                {
+                  "tag": "hr"
+                },
+                {
+                  "tag": "div",
+                  "text": {
+                    "tag": "lark_md",
+                    "content": "**⏰ 通知时间**: $TIME"
+                  }
+                },
+                {
+                  "tag": "div",
+                  "text": {
+                    "tag": "lark_md",
+                    "content": "**📦 仓库**: yiranlaux/my-study\n**🔢 构建ID**: ${{ github.run_id }}\n**🏷️ 版本**: $VERSION\n**👤 触发人**: ${{ github.actor }}"
+                  }
+                },
+                {
+                  "tag": "action",
+                  "actions": [
+                    {
+                      "tag": "button",
+                      "text": {
+                        "tag": "plain_text",
+                        "content": "🔗 查看构建详情"
+                      },
+                      "type": "primary",
+                      "url": "https://github.com/yiranlaux/my-study/actions/runs/${{ github.run_id }}"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+          EOF
+          )
+
+          curl -X POST "${{ secrets.FEISHU_WEBHOOK_URL }}" \
+            -H "Content-Type: application/json" \
+            -d "$CARD_JSON"
 
       - name: Checkout
         uses: actions/checkout@v4
@@ -32,20 +100,58 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v2
 
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle.kts') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Run unit tests with coverage
+        run: ./gradlew testDebugUnitTest jacocoTestReport --no-daemon
+
+      - name: Run lint
+        run: ./gradlew lintRelease --no-daemon
+
       - name: Get version from tag
+        if: startsWith(github.ref, 'refs/tags/v')
         id: version
         run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
       - name: Build release APK
-        run: ./gradlew assembleRelease --no-daemon -PVERSION_NAME=${{ steps.version.outputs.VERSION }}
+        id: build
+        run: ./gradlew assembleRelease --no-daemon ${{ startsWith(github.ref, 'refs/tags/v') && format('-PVERSION_NAME={0}', steps.version.outputs.VERSION) || '' }}
+
+      - name: Upload code coverage reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: code-coverage-reports
+          path: |
+            app/build/reports/jacoco/
+            app/build/reports/jacocoTestReport/
+
+      - name: Deploy reports to GitHub Pages
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: app/build/reports
+
+      - name: Deploy to GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v4
 
       - name: Upload Release APK
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: actions/upload-artifact@v4
         with:
           name: release-apk
           path: app/build/outputs/apk/release/
 
       - name: Create Release
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: ncipollo/release-action@v1
         with:
           artifacts: "app/build/outputs/apk/release/*.apk"
@@ -65,12 +171,74 @@ jobs:
           SECS=$((DURATION % 60))
           DURATION_STR=$(printf "%02d:%02d:%02d" $HOURS $MINS $SECS)
           VERSION="${{ github.ref_name }}"
+
           if [ "$STATUS" = "success" ]; then
-            MSG="✅ Android Release $VERSION 发布成功"
+            EMOJI="✅"
+            COLOR="green"
+            TITLE="Android Release $VERSION 构建成功"
           else
-            MSG="❌ Android Release $VERSION 发布失败"
+            EMOJI="❌"
+            COLOR="red"
+            TITLE="Android Release $VERSION 构建失败"
           fi
+
+          CARD_JSON=$(cat <<EOF
+          {
+            "msg_type": "interactive",
+            "card": {
+              "header": {
+                "title": {
+                  "tag": "plain_text",
+                  "content": "$EMOJI $TITLE $EMOJI",
+                  "font_style": "bold"
+                },
+                "template": "$COLOR"
+              },
+              "elements": [
+                {
+                  "tag": "hr"
+                },
+                {
+                  "tag": "div",
+                  "text": {
+                    "tag": "lark_md",
+                    "content": "**⏰ 通知时间**: $TIME\n**⏱️ 构建耗时**: $DURATION_STR"
+                  }
+                },
+                {
+                  "tag": "div",
+                  "text": {
+                    "tag": "lark_md",
+                    "content": "**📦 仓库**: yiranlaux/my-study\n**🔢 构建ID**: ${{ github.run_id }}\n**🏷️ 版本**: $VERSION\n**👤 触发人**: ${{ github.actor }}"
+                  }
+                },
+                {
+                  "tag": "div",
+                  "text": {
+                    "tag": "lark_md",
+                    "content": "**📊 测试报告**: [覆盖率报告](https://yiranlaux.github.io/my-study/jacoco/jacocoTestReport/html/) | [单元测试](https://yiranlaux.github.io/my-study/tests/testDebugUnitTest/) | [Lint](https://yiranlaux.github.io/my-study/lint-results-debug.html)"
+                  }
+                },
+                {
+                  "tag": "action",
+                  "actions": [
+                    {
+                      "tag": "button",
+                      "text": {
+                        "tag": "plain_text",
+                        "content": "🔗 查看构建详情"
+                      },
+                      "type": "primary",
+                      "url": "https://github.com/yiranlaux/my-study/actions/runs/${{ github.run_id }}"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+          EOF
+          )
+
           curl -X POST "${{ secrets.FEISHU_WEBHOOK_URL }}" \
             -H "Content-Type: application/json" \
-            -d "{\"msg_type\":\"text\",\"content\":{\"text\":\"$MSG\n\n⏰ 通知时间: $TIME\n⏱️ 耗时: $DURATION_STR\n📦 仓库: yiranlau/my-study\n🏷️ 版本: $VERSION\n👤 触发人: ${{ github.actor }}\n🔗 查看详情: https://github.com/yiranlau/my-study/actions/runs/${{ github.run_id }}\"}}"
-
+            -d "$CARD_JSON"

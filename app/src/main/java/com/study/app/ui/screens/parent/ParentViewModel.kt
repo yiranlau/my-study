@@ -1,0 +1,26 @@
+package com.study.app.ui.screens.parent
+
+import androidx.lifecycle.ViewModel
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import javax.inject.Inject
+
+enum class NavItem {
+    SUBJECTS,
+    GRADES,
+    QUESTIONS,
+    IMPORT,
+    RECORDS
+}
+
+@HiltViewModel
+class ParentViewModel @Inject constructor() : ViewModel() {
+    private val _selectedNavItem = MutableStateFlow(NavItem.SUBJECTS)
+    val selectedNavItem: StateFlow<NavItem> = _selectedNavItem.asStateFlow()
+
+    fun selectNavItem(item: NavItem) {
+        _selectedNavItem.value = item
+    }
+}
