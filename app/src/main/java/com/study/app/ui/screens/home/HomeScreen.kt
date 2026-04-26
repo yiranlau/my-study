@@ -1,144 +1,154 @@
 package com.study.app.ui.screens.home
 
+import android.app.KeyguardManager
+import android.content.Context
+import android.content.Intent
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.study.app.R
-import com.study.app.ui.components.StudyCard
+import com.study.app.util.Logger
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
-    onNavigateToSession: (Long) -> Unit,
+    onNavigateToParent: () -> Unit,
+    onNavigateToChild: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+    var credentialError by remember { mutableStateOf(false) }
+
+    val credentialLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == android.app.Activity.RESULT_OK) {
+            viewModel.setParentMode(true)
+            onNavigateToParent()
+            credentialError = false
+        } else {
+            credentialError = true
+        }
+    }
+
+    fun launchCredentialPrompt() {
+        val keyguardManager = context.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            // Use isDeviceSecure to check if lock screen is set (API 23+)
+            if (keyguardManager.isDeviceSecure) {
+                val intent = keyguardManager.createConfirmDeviceCredentialIntent(
+                    "家长验证",
+                    "请输入锁屏密码"
+                )
+                Logger.d("HomeScreen", "Device secure, launching credential intent: ${intent?.component}")
+                if (intent != null) {
+                    credentialLauncher.launch(intent)
+                } else {
+                    // Fallback: device claims secure but intent is null
+                    Logger.d("HomeScreen", "Intent null despite device being secure")
+                    viewModel.setParentMode(true)
+                    onNavigateToParent()
+                }
+            } else {
+                Logger.d("HomeScreen", "No lock screen set, allowing access")
+                viewModel.setParentMode(true)
+                onNavigateToParent()
+            }
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            val intent = keyguardManager.createConfirmDeviceCredentialIntent(
+                "家长验证",
+                "请输入锁屏密码"
+            )
+            if (intent != null) {
+                credentialLauncher.launch(intent)
+            } else {
+                viewModel.setParentMode(true)
+                onNavigateToParent()
+            }
+        } else {
+            viewModel.setParentMode(true)
+            onNavigateToParent()
+        }
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.home_title)) },
+                title = { Text(stringResource(R.string.app_name)) },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer
                 )
             )
-        },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { viewModel.showCreateDialog() },
-                containerColor = MaterialTheme.colorScheme.primary
-            ) {
-                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.create_session))
-            }
         }
     ) { paddingValues ->
-        Box(
+        Row(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(24.dp, Alignment.CenterHorizontally),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            when {
-                uiState.isLoading -> {
-                    CircularProgressIndicator(
-                        modifier = Modifier.align(Alignment.Center)
-                    )
-                }
-                uiState.sessions.isEmpty() -> {
-                    EmptyState(
-                        modifier = Modifier.align(Alignment.Center)
-                    )
-                }
-                else -> {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        items(
-                            items = uiState.sessions,
-                            key = { it.id }
-                        ) { session ->
-                            StudyCard(
-                                session = session,
-                                onClick = { onNavigateToSession(session.id) }
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
-        if (uiState.showCreateDialog) {
-            CreateSessionDialog(
-                onDismiss = { viewModel.hideCreateDialog() },
-                onCreate = { subject -> viewModel.createSession(subject) }
-            )
-        }
-    }
-}
-
-@Composable
-private fun EmptyState(modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier.padding(32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = stringResource(R.string.no_sessions),
-            style = MaterialTheme.typography.titleLarge,
-            textAlign = TextAlign.Center
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = stringResource(R.string.tap_to_start),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center
-        )
-    }
-}
-
-@Composable
-private fun CreateSessionDialog(
-    onDismiss: () -> Unit,
-    onCreate: (String) -> Unit
-) {
-    var subject by remember { mutableStateOf("") }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.create_session)) },
-        text = {
-            OutlinedTextField(
-                value = subject,
-                onValueChange = { subject = it },
-                label = { Text(stringResource(R.string.session_subject)) },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
-        },
-        confirmButton = {
-            TextButton(
-                onClick = { onCreate(subject) },
-                enabled = subject.isNotBlank()
+            // 家长入口 button (orange)
+            Button(
+                onClick = { launchCredentialPrompt() },
+                modifier = Modifier
+                    .weight(1f)
+                    .aspectRatio(1f),
+                shape = RoundedCornerShape(24.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFFFF9800)
+                )
             ) {
-                Text(stringResource(R.string.start_study))
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = "家长入口",
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                }
             }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("取消")
+
+            // 小孩入口 button (green)
+            Button(
+                onClick = onNavigateToChild,
+                modifier = Modifier
+                    .weight(1f)
+                    .aspectRatio(1f),
+                shape = RoundedCornerShape(24.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF4CAF50)
+                )
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = "小孩入口",
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                }
             }
         }
-    )
+    }
 }
