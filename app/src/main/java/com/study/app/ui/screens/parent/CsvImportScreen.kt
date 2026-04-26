@@ -1,8 +1,8 @@
 package com.study.app.ui.screens.parent
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Error
@@ -39,7 +38,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -56,6 +55,21 @@ fun CsvImportScreen(
     var csvContent by remember { mutableStateOf("") }
     var selectedSubjectId by remember { mutableLongStateOf(subjectId) }
     var selectedGradeId by remember { mutableLongStateOf(gradeId) }
+    var selectedFileName by remember { mutableStateOf<String?>(null) }
+    val context = LocalContext.current
+
+    // File picker launcher
+    val csvFilePicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        uri?.let {
+            context.contentResolver.openInputStream(it)?.use { inputStream ->
+                csvContent = inputStream.bufferedReader().readText()
+                selectedFileName = it.lastPathSegment
+                viewModel.parseFile(csvContent)
+            }
+        }
+    }
 
     Row(
         modifier = Modifier
@@ -82,12 +96,11 @@ fun CsvImportScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Upload zone
+                // Upload zone - click to select file
                 UploadZone(
-                    content = csvContent,
-                    onContentChange = { content ->
-                        csvContent = content
-                        viewModel.parseFile(content)
+                    fileName = selectedFileName,
+                    onSelectFile = {
+                        csvFilePicker.launch(arrayOf("text/csv", "text/comma-separated-values", "*/*"))
                     }
                 )
 
@@ -201,31 +214,19 @@ fun CsvImportScreen(
 
 @Composable
 private fun UploadZone(
-    content: String,
-    onContentChange: (String) -> Unit
+    fileName: String?,
+    onSelectFile: () -> Unit
 ) {
-    var isDragging by remember { mutableStateOf(false) }
-
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(150.dp)
-            .clip(RoundedCornerShape(8.dp))
-            .background(
-                if (isDragging) MaterialTheme.colorScheme.primaryContainer
-                else MaterialTheme.colorScheme.surfaceVariant
-            )
-            .border(
-                2.dp,
-                if (isDragging) MaterialTheme.colorScheme.primary
-                else MaterialTheme.colorScheme.outline,
-                RoundedCornerShape(8.dp)
-            )
-            .clickable { /* File picker would be triggered here */ }
-            .padding(16.dp),
-        contentAlignment = Alignment.Center
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
     ) {
         Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Icon(
@@ -234,31 +235,25 @@ private fun UploadZone(
                 modifier = Modifier.size(48.dp),
                 tint = MaterialTheme.colorScheme.primary
             )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "拖拽CSV文件到这里或点击选择",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Spacer(modifier = Modifier.height(12.dp))
+            if (fileName != null) {
+                Text(
+                    text = "已选择: $fileName",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+            Button(onClick = onSelectFile) {
+                Text(if (fileName != null) "重新选择文件" else "选择CSV文件")
+            }
+            Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = "支持 .csv 文件",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-    }
-
-    // Show content input when there's content
-    if (content.isNotEmpty()) {
-        Spacer(modifier = Modifier.height(8.dp))
-        OutlinedTextField(
-            value = content,
-            onValueChange = onContentChange,
-            label = { Text("CSV内容") },
-            modifier = Modifier.fillMaxWidth(),
-            minLines = 3,
-            maxLines = 5
-        )
     }
 }
 
