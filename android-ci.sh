@@ -18,6 +18,7 @@ function download_debug() {
 
     mkdir -p "$BUILD_DIR"
 
+    # Find latest successful debug build via gh
     RUN_ID=$(gh run list --workflow android-ci.yml --status success --limit 1 --json databaseId --jq '.[0].databaseId')
 
     if [ -z "$RUN_ID" ] || [ "$RUN_ID" = "null" ]; then
@@ -27,16 +28,17 @@ function download_debug() {
 
     echo "Found successful run: $RUN_ID"
 
-    # Get artifact info and download URL
-    ARTIFACT_ID=$(gh api repos/yiranlaux/my-study/actions/runs/$RUN_ID/artifacts --jq '.artifacts[] | select(.name == "build-artifacts") | .id')
-    if [ -z "$ARTIFACT_ID" ]; then
+    # Get artifact info
+    ARTIFACT_JSON=$(gh api repos/yiranlaux/my-study/actions/runs/$RUN_ID/artifacts --jq '.artifacts[] | select(.name == "build-artifacts") | {id: .id, size: .size}')
+    ARTIFACT_ID=$(echo "$ARTIFACT_JSON" | jq -r '.id')
+    FILE_SIZE=$(echo "$ARTIFACT_JSON" | jq -r '.size')
+    FILE_SIZE_MB=$((FILE_SIZE / 1024 / 1024))
+    echo "Artifact size: ${FILE_SIZE_MB} MB"
+
+    if [ -z "$ARTIFACT_ID" ] || [ "$ARTIFACT_ID" = "null" ]; then
         echo "Artifact not found"
         exit 1
     fi
-
-    FILE_SIZE=$(gh api repos/yiranlaux/my-study/actions/artifacts/$ARTIFACT_ID --jq '.size // 0')
-    FILE_SIZE_MB=$((FILE_SIZE / 1024 / 1024))
-    echo "Downloading artifact... (${FILE_SIZE_MB} MB)"
 
     # Set proxy if configured
     if [ -n "$HTTPS_PROXY" ] || [ -n "$HTTP_PROXY" ]; then
@@ -45,20 +47,25 @@ function download_debug() {
         echo "Using proxy: HTTPS_PROXY=$HTTPS_PROXY HTTP_PROXY=$HTTP_PROXY"
     fi
 
+    # Clean up previous artifacts
     rm -f "$BUILD_DIR/build-artifacts.zip"
     rm -rf "$BUILD_DIR/outputs"
+    rm -f "$BUILD_DIR/my-study-debug.apk"
+
+    # Download zip artifact
+    echo "Downloading..."
     curl -L -# -f -o "$BUILD_DIR/build-artifacts.zip" \
         -H "Authorization: Bearer $(gh auth token)" \
         "https://api.github.com/repos/yiranlaux/my-study/actions/artifacts/$ARTIFACT_ID/zip"
 
-    unzip -qo "$BUILD_DIR/build-artifacts.zip" -d "$BUILD_DIR"
-    APK_PATH=$(find "$BUILD_DIR" -name "*.apk" | head -1)
-    if [ -n "$APK_PATH" ]; then
-        if [ "$APK_PATH" != "$BUILD_DIR/my-study-debug.apk" ]; then
-            cp "$APK_PATH" "$BUILD_DIR/my-study-debug.apk"
-        else
-            echo "APK already at target location, skipping copy"
-        fi
+    # Extract zip with full overwrite coverage
+    echo "Extracting..."
+    unzip -o "$BUILD_DIR/build-artifacts.zip" -d "$BUILD_DIR"
+
+    # Find and copy APK to target location
+    APK_PATH=$(find "$BUILD_DIR" -name "*.apk" -type f | head -1)
+    if [ -n "$APK_PATH" ] && [ -f "$APK_PATH" ]; then
+        cp -f "$APK_PATH" "$BUILD_DIR/my-study-debug.apk"
         rm -f "$BUILD_DIR/build-artifacts.zip"
         rm -rf "$BUILD_DIR/outputs"
         echo "APK saved to: $BUILD_DIR/my-study-debug.apk"
@@ -74,6 +81,7 @@ function download_release() {
 
     mkdir -p "$BUILD_DIR"
 
+    # Find latest successful release build via gh
     RUN_ID=$(gh run list --workflow android-release.yml --status success --limit 1 --json databaseId --jq '.[0].databaseId')
 
     if [ -z "$RUN_ID" ] || [ "$RUN_ID" = "null" ]; then
@@ -83,15 +91,17 @@ function download_release() {
 
     echo "Found successful run: $RUN_ID"
 
-    ARTIFACT_ID=$(gh api repos/yiranlaux/my-study/actions/runs/$RUN_ID/artifacts --jq '.artifacts[] | select(.name == "release-apk") | .id')
-    if [ -z "$ARTIFACT_ID" ]; then
+    # Get artifact info
+    ARTIFACT_JSON=$(gh api repos/yiranlaux/my-study/actions/runs/$RUN_ID/artifacts --jq '.artifacts[] | select(.name == "release-apk") | {id: .id, size: .size}')
+    ARTIFACT_ID=$(echo "$ARTIFACT_JSON" | jq -r '.id')
+    FILE_SIZE=$(echo "$ARTIFACT_JSON" | jq -r '.size')
+    FILE_SIZE_MB=$((FILE_SIZE / 1024 / 1024))
+    echo "Artifact size: ${FILE_SIZE_MB} MB"
+
+    if [ -z "$ARTIFACT_ID" ] || [ "$ARTIFACT_ID" = "null" ]; then
         echo "Artifact not found"
         exit 1
     fi
-
-    FILE_SIZE=$(gh api repos/yiranlaux/my-study/actions/artifacts/$ARTIFACT_ID --jq '.size // 0')
-    FILE_SIZE_MB=$((FILE_SIZE / 1024 / 1024))
-    echo "Downloading artifact... (${FILE_SIZE_MB} MB)"
 
     # Set proxy if configured
     if [ -n "$HTTPS_PROXY" ] || [ -n "$HTTP_PROXY" ]; then
@@ -100,25 +110,30 @@ function download_release() {
         echo "Using proxy: HTTPS_PROXY=$HTTPS_PROXY HTTP_PROXY=$HTTP_PROXY"
     fi
 
+    # Clean up previous artifacts
     rm -f "$BUILD_DIR/release-apk.zip"
     rm -rf "$BUILD_DIR/outputs"
+    rm -f "$BUILD_DIR/my-study-release.apk"
+
+    # Download zip artifact
+    echo "Downloading..."
     curl -L -# -f -o "$BUILD_DIR/release-apk.zip" \
         -H "Authorization: Bearer $(gh auth token)" \
         "https://api.github.com/repos/yiranlaux/my-study/actions/artifacts/$ARTIFACT_ID/zip"
 
-    unzip -qo "$BUILD_DIR/release-apk.zip" -d "$BUILD_DIR"
-    APK_PATH=$(find "$BUILD_DIR" -name "*.apk" | head -1)
-    if [ -n "$APK_PATH" ]; then
-        if [ "$APK_PATH" != "$BUILD_DIR/my-study-release.apk" ]; then
-            cp "$APK_PATH" "$BUILD_DIR/my-study-release.apk"
-        else
-            echo "APK already at target location, skipping copy"
-        fi
+    # Extract zip with full overwrite coverage
+    echo "Extracting..."
+    unzip -o "$BUILD_DIR/release-apk.zip" -d "$BUILD_DIR"
+
+    # Find and copy APK to target location
+    APK_PATH=$(find "$BUILD_DIR" -name "*.apk" -type f | head -1)
+    if [ -n "$APK_PATH" ] && [ -f "$APK_PATH" ]; then
+        cp -f "$APK_PATH" "$BUILD_DIR/my-study-release.apk"
         rm -f "$BUILD_DIR/release-apk.zip"
         rm -rf "$BUILD_DIR/outputs"
         echo "APK saved to: $BUILD_DIR/my-study-release.apk"
     else
-        echo "No APK found in artifacts"
+        echo "APK not found in artifacts"
         exit 1
     fi
 }
