@@ -1,6 +1,6 @@
 package com.study.app.ui.screens.parent
 
-import android.util.Log
+import com.study.app.util.Logger
 import androidx.lifecycle.ViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,7 +24,7 @@ class ParentViewModel @Inject constructor() : ViewModel() {
     val selectedNavItem: StateFlow<NavItem> = _selectedNavItem.asStateFlow()
 
     fun selectNavItem(item: NavItem) {
-        Log.d(TAG, "selectNavItem: item=$item")
+        Logger.d(TAG, "selectNavItem: item=$item")
         _selectedNavItem.value = item
     }
 }

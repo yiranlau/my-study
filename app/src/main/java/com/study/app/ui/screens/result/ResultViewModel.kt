@@ -1,6 +1,6 @@
 package com.study.app.ui.screens.result
 
-import android.util.Log
+import com.study.app.util.Logger
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.study.app.domain.model.Question
@@ -33,22 +33,22 @@ class ResultViewModel @Inject constructor(
     val uiState: StateFlow<ResultUiState> = _uiState.asStateFlow()
 
     fun addToWrongBook(questionId: Long, userAnswer: String, correctAnswer: String) {
-        Log.d(TAG, "addToWrongBook: questionId=$questionId, userAnswer=$userAnswer, correctAnswer=$correctAnswer")
+        Logger.d(TAG, "addToWrongBook: questionId=$questionId, userAnswer=$userAnswer, correctAnswer=$correctAnswer")
         viewModelScope.launch {
             wrongAnswerRepository.insert(WrongAnswerBook(
                 questionId = questionId,
                 studentAnswer = userAnswer,
                 correctAnswer = correctAnswer
             ))
-            Log.d(TAG, "addToWrongBook: added to wrong book successfully")
+            Logger.d(TAG, "addToWrongBook: added to wrong book successfully")
         }
     }
 
     fun removeFromWrongBook(questionId: Long) {
-        Log.d(TAG, "removeFromWrongBook: questionId=$questionId")
+        Logger.d(TAG, "removeFromWrongBook: questionId=$questionId")
         viewModelScope.launch {
             wrongAnswerRepository.deleteByQuestionId(questionId)
-            Log.d(TAG, "removeFromWrongBook: removed from wrong book successfully")
+            Logger.d(TAG, "removeFromWrongBook: removed from wrong book successfully")
         }
     }
 
@@ -57,7 +57,6 @@ class ResultViewModel @Inject constructor(
         answers: Map<Int, String>,
         durationMillis: Long = 0L
     ) {
-        Log.d(TAG, "calculateResults: ${questions.size} questions, ${answers.size} answers, duration=$durationMillis")
         val results = questions.mapIndexed { index, question ->
             QuestionResult(
                 question = question,
@@ -73,7 +72,6 @@ class ResultViewModel @Inject constructor(
             correctCount.toFloat() / totalQuestions * 100
         } else 0f
 
-        Log.d(TAG, "calculateResults: correct=$correctCount, total=$totalQuestions, accuracy=$accuracy%")
         _uiState.value = ResultUiState(
             questionResults = results,
             totalQuestions = totalQuestions,

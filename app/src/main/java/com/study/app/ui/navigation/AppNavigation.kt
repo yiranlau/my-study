@@ -1,6 +1,6 @@
 package com.study.app.ui.navigation
 
-import android.util.Log
+import com.study.app.util.Logger
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -38,35 +38,35 @@ private const val TAG = "NavAppNavigation"
 
 @Composable
 fun AppNavigation(navController: NavHostController) {
-    Log.d(TAG, "AppNavigation: start")
+    Logger.d(TAG, "AppNavigation: start")
     NavHost(
         navController = navController,
         startDestination = Screen.Home.route
     ) {
         composable(Screen.Home.route) {
-            Log.d(TAG, "Navigating to Home")
+            Logger.d(TAG, "Navigating to Home")
             HomeScreen(
                 onNavigateToParent = {
-                    Log.d(TAG, "Navigating to ParentHome")
+                    Logger.d(TAG, "Navigating to ParentHome")
                     navController.navigate(Screen.ParentHome.route)
                 },
                 onNavigateToChild = {
-                    Log.d(TAG, "Navigating to SubjectGradeSelect")
+                    Logger.d(TAG, "Navigating to SubjectGradeSelect")
                     navController.navigate(Screen.SubjectGradeSelect.route)
                 }
             )
         }
 
         composable(Screen.ParentHome.route) {
-            Log.d(TAG, "Navigating to ParentHome")
+            Logger.d(TAG, "Navigating to ParentHome")
             ParentHomeScreen()
         }
 
         composable(Screen.SubjectGradeSelect.route) {
-            Log.d(TAG, "Navigating to SubjectGradeSelect")
+            Logger.d(TAG, "Navigating to SubjectGradeSelect")
             SubjectGradeSelectScreen(
                 onNavigateToSettings = { subjectId, gradeId ->
-                    Log.d(TAG, "Navigating to Settings: subjectId=$subjectId, gradeId=$gradeId")
+                    Logger.d(TAG, "Navigating to Settings: subjectId=$subjectId, gradeId=$gradeId")
                     navController.navigate(Screen.Settings.createRoute(subjectId, gradeId))
                 }
             )
@@ -81,13 +81,13 @@ fun AppNavigation(navController: NavHostController) {
         ) { backStackEntry ->
             val subjectId = backStackEntry.arguments?.getLong("subjectId") ?: 0L
             val gradeId = backStackEntry.arguments?.getLong("gradeId") ?: 0L
-            Log.d(TAG, "Navigating to Settings: subjectId=$subjectId, gradeId=$gradeId")
+            Logger.d(TAG, "Navigating to Settings: subjectId=$subjectId, gradeId=$gradeId")
 
             SettingsScreen(
                 subjectId = subjectId,
                 gradeId = gradeId,
                 onStartStudy = { sid, gid, questionCount, timeLimitSeconds ->
-                    Log.d(TAG, "Navigating to Quiz: subjectId=$sid, gradeId=$gid, questionCount=$questionCount, timeLimitSeconds=$timeLimitSeconds")
+                    Logger.d(TAG, "Navigating to Quiz: subjectId=$sid, gradeId=$gid, questionCount=$questionCount, timeLimitSeconds=$timeLimitSeconds")
                     navController.navigate(
                         Screen.Quiz.createRoute(sid, gid, questionCount, timeLimitSeconds)
                     )
@@ -108,7 +108,7 @@ fun AppNavigation(navController: NavHostController) {
             val gradeId = backStackEntry.arguments?.getLong("gradeId") ?: 0L
             val questionCount = backStackEntry.arguments?.getInt("questionCount") ?: 10
             val timeLimitSeconds = backStackEntry.arguments?.getInt("timeLimitSeconds") ?: 0
-            Log.d(TAG, "Navigating to Quiz: subjectId=$subjectId, gradeId=$gradeId, questionCount=$questionCount, timeLimitSeconds=$timeLimitSeconds")
+            Logger.d(TAG, "Navigating to Quiz: subjectId=$subjectId, gradeId=$gradeId, questionCount=$questionCount, timeLimitSeconds=$timeLimitSeconds")
 
             QuizScreen(
                 subjectId = subjectId,
@@ -117,7 +117,7 @@ fun AppNavigation(navController: NavHostController) {
                 timeLimitSeconds = timeLimitSeconds,
                 onNavigateBack = { navController.popBackStack() },
                 onQuizFinished = { _, _ ->
-                    Log.d(TAG, "Navigating to Result (quiz finished)")
+                    Logger.d(TAG, "Navigating to Result (quiz finished)")
                     navController.navigate(Screen.Result.route) {
                         popUpTo(Screen.Home.route)
                     }
@@ -126,7 +126,7 @@ fun AppNavigation(navController: NavHostController) {
         }
 
         composable(Screen.Result.route) {
-            Log.d(TAG, "Navigating to Result")
+            Logger.d(TAG, "Navigating to Result")
             ResultScreen(
                 onNavigateBack = { navController.popBackStack() },
                 onRetry = { navController.popBackStack() }
@@ -134,22 +134,22 @@ fun AppNavigation(navController: NavHostController) {
         }
 
         composable(Screen.WrongBook.route) {
-            Log.d(TAG, "Navigating to WrongBook")
+            Logger.d(TAG, "Navigating to WrongBook")
             WrongBookScreen(
                 onNavigateBack = { navController.popBackStack() },
                 onRetryWrongQuestions = {
-                    Log.d(TAG, "Navigating to Quiz (retry wrong questions)")
+                    Logger.d(TAG, "Navigating to Quiz (retry wrong questions)")
                     navController.navigate(Screen.Quiz.createRoute(0L, 0L, 10, 0))
                 }
             )
         }
 
         composable(Screen.ChildHistory.route) {
-            Log.d(TAG, "Navigating to ChildHistory")
+            Logger.d(TAG, "Navigating to ChildHistory")
             ChildHistoryScreen(
                 onNavigateBack = { navController.popBackStack() }
             )
         }
     }
-    Log.d(TAG, "AppNavigation: finished")
+    Logger.d(TAG, "AppNavigation: finished")
 }

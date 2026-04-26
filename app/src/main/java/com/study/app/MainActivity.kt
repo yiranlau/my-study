@@ -1,7 +1,7 @@
 package com.study.app
 
 import android.os.Bundle
-import android.util.Log
+import com.study.app.util.Logger
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -21,9 +21,9 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        Log.d(TAG, "onCreate: start")
+        Logger.d(TAG, "onCreate: start")
         super.onCreate(savedInstanceState)
-        Log.d(TAG, "onCreate: finished")
+        Logger.d(TAG, "onCreate: finished")
         enableEdgeToEdge()
         setContent {
             StudyAppTheme {
@@ -39,38 +39,38 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onStart() {
-        Log.d(TAG, "onStart: start")
+        Logger.d(TAG, "onStart: start")
         super.onStart()
-        Log.d(TAG, "onStart: finished")
+        Logger.d(TAG, "onStart: finished")
     }
 
     override fun onResume() {
-        Log.d(TAG, "onResume: start")
+        Logger.d(TAG, "onResume: start")
         super.onResume()
-        Log.d(TAG, "onResume: finished")
+        Logger.d(TAG, "onResume: finished")
     }
 
     override fun onPause() {
-        Log.d(TAG, "onPause: start")
+        Logger.d(TAG, "onPause: start")
         super.onPause()
-        Log.d(TAG, "onPause: finished")
+        Logger.d(TAG, "onPause: finished")
     }
 
     override fun onStop() {
-        Log.d(TAG, "onStop: start")
+        Logger.d(TAG, "onStop: start")
         super.onStop()
-        Log.d(TAG, "onStop: finished")
+        Logger.d(TAG, "onStop: finished")
     }
 
     override fun onDestroy() {
-        Log.d(TAG, "onDestroy: start")
+        Logger.d(TAG, "onDestroy: start")
         super.onDestroy()
-        Log.d(TAG, "onDestroy: finished")
+        Logger.d(TAG, "onDestroy: finished")
     }
 
     override fun onRestart() {
-        Log.d(TAG, "onRestart: start")
+        Logger.d(TAG, "onRestart: start")
         super.onRestart()
-        Log.d(TAG, "onRestart: finished")
+        Logger.d(TAG, "onRestart: finished")
     }
 }

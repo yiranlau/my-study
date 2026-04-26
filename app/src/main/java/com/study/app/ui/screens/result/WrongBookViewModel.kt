@@ -1,6 +1,6 @@
 package com.study.app.ui.screens.result
 
-import android.util.Log
+import com.study.app.util.Logger
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.study.app.data.local.GradeDao
@@ -57,15 +57,12 @@ class WrongBookViewModel @Inject constructor(
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     fun filterBySubject(subject: String) {
-        Log.d(TAG, "filterBySubject: subject=$subject")
         _selectedSubject.value = subject
     }
 
     fun removeFromWrongBook(questionId: Long) {
-        Log.d(TAG, "removeFromWrongBook: questionId=$questionId")
         viewModelScope.launch {
             wrongAnswerRepository.deleteByQuestionId(questionId)
-            Log.d(TAG, "removeFromWrongBook: removed successfully")
         }
     }
 }

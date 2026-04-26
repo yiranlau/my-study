@@ -1,6 +1,6 @@
 package com.study.app.ui.screens.child
 
-import android.util.Log
+import com.study.app.util.Logger
 import androidx.lifecycle.ViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,18 +24,18 @@ class SettingsViewModel @Inject constructor() : ViewModel() {
 
     fun setQuestionCount(count: Int) {
         val clampedCount = count.coerceIn(1, 50)
-        Log.d(TAG, "setQuestionCount: count=$count -> clamped=$clampedCount")
+        Logger.d(TAG, "setQuestionCount: count=$count -> clamped=$clampedCount")
         _questionCount.value = clampedCount
     }
 
     fun setTimeLimitEnabled(enabled: Boolean) {
-        Log.d(TAG, "setTimeLimitEnabled: enabled=$enabled")
+        Logger.d(TAG, "setTimeLimitEnabled: enabled=$enabled")
         _isTimeLimitEnabled.value = enabled
     }
 
     fun setTimeLimitMinutes(minutes: Int) {
         val clampedMinutes = minutes.coerceIn(1, 120)
-        Log.d(TAG, "setTimeLimitMinutes: minutes=$minutes -> clamped=$clampedMinutes")
+        Logger.d(TAG, "setTimeLimitMinutes: minutes=$minutes -> clamped=$clampedMinutes")
         _timeLimitMinutes.value = clampedMinutes
     }
 }

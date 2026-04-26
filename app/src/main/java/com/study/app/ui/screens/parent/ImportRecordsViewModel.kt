@@ -1,6 +1,6 @@
 package com.study.app.ui.screens.parent
 
-import android.util.Log
+import com.study.app.util.Logger
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.study.app.domain.model.ImportRecord
@@ -47,15 +47,15 @@ class ImportRecordsViewModel @Inject constructor(
         get() = importRecords.value.sumOf { it.successCount }
 
     fun setDateFilter(filter: DateFilter) {
-        Log.d(TAG, "setDateFilter: filter=$filter")
+        Logger.d(TAG, "setDateFilter: filter=$filter")
         _dateFilter.value = filter
     }
 
     fun deleteRecord(record: ImportRecord) {
-        Log.d(TAG, "deleteRecord: recordId=${record.id}, fileName=${record.fileName}")
+        Logger.d(TAG, "deleteRecord: recordId=${record.id}, fileName=${record.fileName}")
         viewModelScope.launch {
             importRepository.delete(record)
-            Log.d(TAG, "deleteRecord: record deleted successfully")
+            Logger.d(TAG, "deleteRecord: record deleted successfully")
         }
     }
 

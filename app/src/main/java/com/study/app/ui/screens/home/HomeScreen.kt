@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.study.app.R
+import com.study.app.util.Logger
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -52,17 +53,17 @@ fun HomeScreen(
                     "家长验证",
                     "请输入锁屏密码"
                 )
-                android.util.Log.d("HomeScreen", "Device secure, launching credential intent: ${intent?.component}")
+                Logger.d("HomeScreen", "Device secure, launching credential intent: ${intent?.component}")
                 if (intent != null) {
                     credentialLauncher.launch(intent)
                 } else {
                     // Fallback: device claims secure but intent is null
-                    android.util.Log.d("HomeScreen", "Intent null despite device being secure")
+                    Logger.d("HomeScreen", "Intent null despite device being secure")
                     viewModel.setParentMode(true)
                     onNavigateToParent()
                 }
             } else {
-                android.util.Log.d("HomeScreen", "No lock screen set, allowing access")
+                Logger.d("HomeScreen", "No lock screen set, allowing access")
                 viewModel.setParentMode(true)
                 onNavigateToParent()
             }

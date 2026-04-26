@@ -1,6 +1,6 @@
 package com.study.app.ui.screens.parent
 
-import android.util.Log
+import com.study.app.util.Logger
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.study.app.domain.model.PracticeRecord

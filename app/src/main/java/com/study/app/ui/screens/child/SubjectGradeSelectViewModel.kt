@@ -1,6 +1,6 @@
 package com.study.app.ui.screens.child
 
-import android.util.Log
+import com.study.app.util.Logger
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.study.app.domain.model.Grade
@@ -36,12 +36,12 @@ class SubjectGradeSelectViewModel @Inject constructor(
     val selectedGrade: StateFlow<Grade?> = _selectedGrade.asStateFlow()
 
     fun selectSubject(subject: Subject) {
-        Log.d(TAG, "selectSubject: subjectId=${subject.id}, name=${subject.name}")
+        Logger.d(TAG, "selectSubject: subjectId=${subject.id}, name=${subject.name}")
         _selectedSubject.value = subject
     }
 
     fun selectGrade(grade: Grade) {
-        Log.d(TAG, "selectGrade: gradeId=${grade.id}, name=${grade.name}")
+        Logger.d(TAG, "selectGrade: gradeId=${grade.id}, name=${grade.name}")
         _selectedGrade.value = grade
     }
 }
