@@ -26,24 +26,15 @@ fun ParentHomeScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .weight(1f),
-            contentAlignment = Alignment.Center
+                .weight(1f)
         ) {
-            Text(
-                text = getContentTitle(selectedNavItem),
-                style = MaterialTheme.typography.headlineMedium,
-                color = MaterialTheme.colorScheme.onBackground
-            )
+            when (selectedNavItem) {
+                NavItem.SUBJECTS -> SubjectManagementScreen()
+                NavItem.GRADES -> GradeManagementScreen()
+                NavItem.QUESTIONS -> QuestionEntryScreen(subjectId = 0L, gradeId = 0L)
+                NavItem.IMPORT -> CsvImportScreen(subjectId = 0L, gradeId = 0L)
+                NavItem.RECORDS -> ImportRecordsScreen()
+            }
         }
-    }
-}
-
-private fun getContentTitle(item: NavItem): String {
-    return when (item) {
-        NavItem.SUBJECTS -> "科目管理"
-        NavItem.GRADES -> "年级管理"
-        NavItem.QUESTIONS -> "题目管理"
-        NavItem.IMPORT -> "导入"
-        NavItem.RECORDS -> "记录"
     }
 }
