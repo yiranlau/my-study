@@ -1,5 +1,6 @@
 package com.study.app.ui.screens.parent
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.study.app.domain.model.Question
@@ -21,6 +22,8 @@ class QuestionEntryViewModel @Inject constructor(
     private val questionRepository: QuestionRepository
 ) : ViewModel() {
 
+    private val TAG = "VMQuestionEntryViewModel"
+
     val selectedType = MutableStateFlow(QuestionType.CHOICE)
     val content = MutableStateFlow("")
     val options = MutableStateFlow(listOf("", "", "", ""))
@@ -39,10 +42,12 @@ class QuestionEntryViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     fun setSubjectAndGrade(subjectId: Long, gradeId: Long) {
+        Log.d(TAG, "setSubjectAndGrade: subjectId=$subjectId, gradeId=$gradeId")
         _subjectAndGrade.value = Pair(subjectId, gradeId)
     }
 
     fun setType(type: QuestionType) {
+        Log.d(TAG, "setType: type=$type")
         selectedType.value = type
     }
 
@@ -63,6 +68,7 @@ class QuestionEntryViewModel @Inject constructor(
     }
 
     fun saveQuestion() {
+        Log.d(TAG, "saveQuestion: content=${content.value.take(50)}...")
         viewModelScope.launch {
             val (subjectId, gradeId) = _subjectAndGrade.value
             val question = Question(
@@ -75,11 +81,13 @@ class QuestionEntryViewModel @Inject constructor(
                 hint = if (selectedType.value == QuestionType.FILL_BLANK) hint.value else null
             )
             questionRepository.insert(question)
+            Log.d(TAG, "saveQuestion: question saved successfully, type=${selectedType.value}")
             clearForm()
         }
     }
 
     private fun clearForm() {
+        Log.d(TAG, "clearForm: clearing form")
         content.value = ""
         options.value = listOf("", "", "", "")
         answer.value = ""

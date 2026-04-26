@@ -1,5 +1,6 @@
 package com.study.app.data.import
 
+import android.util.Log
 import com.study.app.domain.model.Question
 import com.study.app.domain.model.QuestionType
 
@@ -12,6 +13,9 @@ import com.study.app.domain.model.QuestionType
  * FILL_BLANK,语文,二年级,中国的首都是?,,北京
  */
 class CsvImporter {
+    companion object {
+        private const val TAG = "CSVImporter"
+    }
 
     /**
      * Parses a single CSV line into a question.
@@ -20,16 +24,21 @@ class CsvImporter {
      * @return CsvImportResult containing either a successful parse with question data, or an error
      */
     fun parseLine(line: String): CsvImportResult {
+        Log.d(TAG, "parseLine: parsing line content=${line.take(50)}...")
         return try {
             val parts = line.split(",")
             if (parts.size < 5) {
+                Log.e(TAG, "parseLine: invalid format at line, expected at least 5 fields, got ${parts.size}")
                 return CsvImportResult.Error("Invalid format: expected at least 5 fields", line)
             }
 
             val type = when (parts[0].trim().uppercase()) {
                 "CHOICE" -> QuestionType.CHOICE
                 "FILL_BLANK" -> QuestionType.FILL_BLANK
-                else -> return CsvImportResult.Error("Unknown type: ${parts[0]}", line)
+                else -> {
+                    Log.e(TAG, "parseLine: unknown question type '${parts[0]}'")
+                    return CsvImportResult.Error("Unknown type: ${parts[0]}", line)
+                }
             }
 
             val subjectName = parts[1].trim()
@@ -46,11 +55,13 @@ class CsvImporter {
                 // Find the JSON array start (look for part starting with '[')
                 val jsonStartIndex = parts.indexOfFirst { it.trim().startsWith("[") }
                 if (jsonStartIndex == -1) {
+                    Log.e(TAG, "parseLine: CHOICE question missing options JSON array")
                     return CsvImportResult.Error("CHOICE question requires options JSON array", line)
                 }
                 // Find the JSON array end (look for part ending with ']')
                 val jsonEndIndex = parts.indexOfLast { it.trim().endsWith("]") }
                 if (jsonEndIndex == -1 || jsonEndIndex < jsonStartIndex) {
+                    Log.e(TAG, "parseLine: invalid options JSON array format")
                     return CsvImportResult.Error("Invalid options JSON array format", line)
                 }
                 // Reconstruct the JSON array
@@ -73,12 +84,14 @@ class CsvImporter {
                 answer = answer
             )
 
+            Log.d(TAG, "parseLine: success, type=$type, subject=$subjectName, grade=$gradeName")
             CsvImportResult.Success(
                 subjectName = subjectName,
                 gradeName = gradeName,
                 question = question
             )
         } catch (e: Exception) {
+            Log.e(TAG, "parseLine: error parsing line", e)
             CsvImportResult.Error(e.message ?: "Unknown error", line)
         }
     }

@@ -1,5 +1,6 @@
 package com.study.app.ui.screens.parent
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.study.app.data.import.CsvImportResult
@@ -22,6 +23,8 @@ class CsvImportViewModel @Inject constructor(
     private val gradeRepository: GradeRepository
 ) : ViewModel() {
 
+    private val TAG = "VMCsvImportViewModel"
+
     // CsvImporter is created directly to avoid Java keyword issue with package name 'data.import'
     private val csvImporter = CsvImporter()
 
@@ -36,10 +39,13 @@ class CsvImportViewModel @Inject constructor(
 
     fun parseFile(content: String) {
         val lines = content.lines().drop(1) // Skip header
+        Log.d(TAG, "parseFile: parsing ${lines.size} lines")
         _importResults.value = lines.map { csvImporter.parseLine(it) }
+        Log.d(TAG, "parseFile: success=${successCount}, errors=${errorCount}")
     }
 
     fun confirmImport(subjectId: Long, gradeId: Long) {
+        Log.d(TAG, "confirmImport: subjectId=$subjectId, gradeId=$gradeId, successCount=$successCount")
         viewModelScope.launch {
             _importResults.value.filterIsInstance<CsvImportResult.Success>().forEach { result ->
                 val question = result.question.copy(
@@ -48,15 +54,18 @@ class CsvImportViewModel @Inject constructor(
                 )
                 questionRepository.insert(question)
             }
+            Log.d(TAG, "confirmImport: imported ${successCount} questions")
         }
     }
 
     fun clearResults() {
+        Log.d(TAG, "clearResults: clearing import results")
         _importResults.value = emptyList()
     }
 
     // For testing only - allows direct state manipulation
     internal fun setImportResultsForTest(results: List<CsvImportResult>) {
+        Log.d(TAG, "setImportResultsForTest: test mode, ${results.size} results")
         _importResults.value = results
     }
 }

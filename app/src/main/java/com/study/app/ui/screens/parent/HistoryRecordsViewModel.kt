@@ -1,5 +1,6 @@
 package com.study.app.ui.screens.parent
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.study.app.domain.model.PracticeRecord
@@ -20,6 +21,8 @@ class HistoryRecordsViewModel @Inject constructor(
     private val subjectRepository: SubjectRepository,
     private val gradeRepository: GradeRepository
 ) : ViewModel() {
+
+    private val TAG = "VMHistoryRecordsViewModel"
 
     val practiceRecords: StateFlow<List<PracticeRecord>> = practiceRepository.getAll()
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())

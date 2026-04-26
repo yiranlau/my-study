@@ -1,5 +1,6 @@
 package com.study.app.ui.screens.quiz
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.study.app.domain.model.Question
@@ -18,6 +19,8 @@ class QuizViewModel @Inject constructor(
     private val questionRepository: QuestionRepository
 ) : ViewModel() {
 
+    private val TAG = "VMQuizViewModel"
+
     private val _state = MutableStateFlow(QuizState())
     val state: StateFlow<QuizState> = _state.asStateFlow()
 
@@ -27,8 +30,10 @@ class QuizViewModel @Inject constructor(
         get() = _state.value.questions.getOrNull(_state.value.currentIndex)
 
     fun loadQuestions(subjectId: Long, gradeId: Long, count: Int) {
+        Log.d(TAG, "loadQuestions: subjectId=$subjectId, gradeId=$gradeId, count=$count")
         viewModelScope.launch {
             val questions = questionRepository.getRandomQuestions(subjectId, gradeId, count)
+            Log.d(TAG, "loadQuestions: loaded ${questions.size} questions")
             _state.value = _state.value.copy(
                 questions = questions,
                 currentIndex = 0,
@@ -41,13 +46,16 @@ class QuizViewModel @Inject constructor(
 
     fun answerQuestion(answer: String) {
         val currentIndex = _state.value.currentIndex
+        Log.d(TAG, "answerQuestion: index=$currentIndex, answer=$answer")
         val newAnswers = _state.value.answers + (currentIndex to answer)
         _state.value = _state.value.copy(answers = newAnswers)
     }
 
     fun nextQuestion() {
         val nextIndex = _state.value.currentIndex + 1
+        Log.d(TAG, "nextQuestion: currentIndex=${_state.value.currentIndex} -> nextIndex=$nextIndex, total=${_state.value.questions.size}")
         if (nextIndex >= _state.value.questions.size) {
+            Log.d(TAG, "nextQuestion: finished quiz")
             _state.value = _state.value.copy(isFinished = true)
         } else {
             _state.value = _state.value.copy(currentIndex = nextIndex)
@@ -56,12 +64,16 @@ class QuizViewModel @Inject constructor(
 
     fun previousQuestion() {
         val prevIndex = _state.value.currentIndex - 1
+        Log.d(TAG, "previousQuestion: currentIndex=${_state.value.currentIndex} -> prevIndex=$prevIndex")
         if (prevIndex >= 0) {
             _state.value = _state.value.copy(currentIndex = prevIndex)
+        } else {
+            Log.d(TAG, "previousQuestion: already at first question, no-op")
         }
     }
 
     fun setTimeLimit(seconds: Int) {
+        Log.d(TAG, "setTimeLimit: seconds=$seconds")
         _state.value = _state.value.copy(remainingSeconds = seconds)
         startTimer()
     }
@@ -69,6 +81,7 @@ class QuizViewModel @Inject constructor(
     private fun startTimer() {
         timerJob?.cancel()
         timerJob = viewModelScope.launch {
+            Log.d(TAG, "startTimer: timer started")
             while (_state.value.remainingSeconds > 0 && !_state.value.isTimeUp) {
                 delay(1000)
                 tickTimer()
@@ -79,6 +92,7 @@ class QuizViewModel @Inject constructor(
     fun tickTimer() {
         val newSeconds = _state.value.remainingSeconds - 1
         if (newSeconds <= 0) {
+            Log.d(TAG, "tickTimer: time is up!")
             _state.value = _state.value.copy(
                 remainingSeconds = 0,
                 isTimeUp = true,
@@ -92,5 +106,6 @@ class QuizViewModel @Inject constructor(
     override fun onCleared() {
         super.onCleared()
         timerJob?.cancel()
+        Log.d(TAG, "onCleared: timer cancelled")
     }
 }

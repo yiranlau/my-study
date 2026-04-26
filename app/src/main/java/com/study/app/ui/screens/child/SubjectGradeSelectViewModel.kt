@@ -1,5 +1,6 @@
 package com.study.app.ui.screens.child
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.study.app.domain.model.Grade
@@ -20,6 +21,8 @@ class SubjectGradeSelectViewModel @Inject constructor(
     private val gradeRepository: GradeRepository
 ) : ViewModel() {
 
+    private val TAG = "VMSubjectGradeSelectViewModel"
+
     val subjects: StateFlow<List<Subject>> = subjectRepository.getAll()
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
@@ -33,10 +36,12 @@ class SubjectGradeSelectViewModel @Inject constructor(
     val selectedGrade: StateFlow<Grade?> = _selectedGrade.asStateFlow()
 
     fun selectSubject(subject: Subject) {
+        Log.d(TAG, "selectSubject: subjectId=${subject.id}, name=${subject.name}")
         _selectedSubject.value = subject
     }
 
     fun selectGrade(grade: Grade) {
+        Log.d(TAG, "selectGrade: gradeId=${grade.id}, name=${grade.name}")
         _selectedGrade.value = grade
     }
 }

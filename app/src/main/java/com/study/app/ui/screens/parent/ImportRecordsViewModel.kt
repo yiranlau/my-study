@@ -1,5 +1,6 @@
 package com.study.app.ui.screens.parent
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.study.app.domain.model.ImportRecord
@@ -24,6 +25,8 @@ class ImportRecordsViewModel @Inject constructor(
     private val importRepository: ImportRepository
 ) : ViewModel() {
 
+    private val TAG = "VMImportRecordsViewModel"
+
     private val _dateFilter = MutableStateFlow(DateFilter.ALL)
     val dateFilter: StateFlow<DateFilter> = _dateFilter.asStateFlow()
 
@@ -44,12 +47,15 @@ class ImportRecordsViewModel @Inject constructor(
         get() = importRecords.value.sumOf { it.successCount }
 
     fun setDateFilter(filter: DateFilter) {
+        Log.d(TAG, "setDateFilter: filter=$filter")
         _dateFilter.value = filter
     }
 
     fun deleteRecord(record: ImportRecord) {
+        Log.d(TAG, "deleteRecord: recordId=${record.id}, fileName=${record.fileName}")
         viewModelScope.launch {
             importRepository.delete(record)
+            Log.d(TAG, "deleteRecord: record deleted successfully")
         }
     }
 
